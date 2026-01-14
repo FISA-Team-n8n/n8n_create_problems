@@ -1,0 +1,275 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "2852d92d-d2d8-44c9-a03d-db82d53c523f-send-email",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a2486b97-24fe-4739-961d-0150612aab92",
+      "name": "Webhook",
+      "webhookId": "2852d92d-d2d8-44c9-a03d-db82d53c523f"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.link }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "d284925a-1c26-4b8d-bb4c-b8fbfe06fe72",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "title",
+              "cssSelector": "h1.headline"
+            },
+            {
+              "key": "contents",
+              "cssSelector": "#articletxt"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "4a99d47e-c308-43da-be37-b9c22b1ec90d",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -784,
+        80
+      ],
+      "id": "a9a04b4d-b333-4a62-a270-b6d27bce701b",
+      "name": "When chat message received",
+      "webhookId": "13498ece-48b0-4dd7-9276-1ea21070cee5"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.contents }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "역할: 너는 금융감독원이나 경제 연구소에서 근무하는 전문 금융 교육 콘텐츠 제작자야. 임무: 제공되는 금융 기사 본문을 분석하여, 독자가 기사의 핵심 금융 개념과 시장 흐름을 정확히 파악했는지 확인하는 문제를 총 4~5개 출제해.  문제 출제 가이드라인:  용어 확인: 기사에 나온 주요 금융 용어의 정의를 정확히 묻는다.  흐름 분석: 기사 내 인과관계(원인과 결과)를 파악하는 문제를 반드시 포함한다.  경제적 추론: 기사 내용을 바탕으로 한 향후 시장 변화나 정책적 시사점을 묻는다.  언어 규칙: 모든 출력 문장(질문, 옵션, 정답, 해설)은 반드시 100% 한국어로만 작성한다. 일본어 조사나 영어 단어가 섞이지 않도록 철저히 검수하라.  데이터 일관성: 객관식 문제의 경우, answer는 반드시 options 중 하나와 완벽하게 일치해야 한다. 객관식 문제를 출제할 때에는 보기(option)에 존재하는 답(answer)이어야 하고,  답(answer)이 하나만 있는 문제만 출제해 답이 2개 이상인 문제는 출제하지마  출력 형식: 반드시 순수한 JSON 데이터만 출력하고 Markdown 형식을 무시해. 또한 /n과 같은 코드들도 무시하고 오로지 한국어로만 구성해  출력 형태 예시 {   \"title\": 문서 제목   \"summary\": 문서 요약 내용   \"quiz\": [     {       \"type\": 객관식       \"question\": 문제 내용       \"options\": 객관식 번호       \"answer\": 답       \"explanation\": 문제 설명     },     {       \"type\": \"단답형\",       \"question\": 문제       \"answer\": 문제의 답     }   ] }"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        592,
+        0
+      ],
+      "id": "e86959a1-3b7b-4ed9-ade9-5b8fc072efe8",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        592,
+        208
+      ],
+      "id": "62f2e4a6-5e98-47e3-b648-fb04f73fbfb6",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "HuMJ2pCjNcrXPpWv",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. 입력 데이터 가져오기\nconst input = $input.all()[0].json; \n\n// 2. AI의 응답 데이터(quizData) 추출 및 파싱\n// AI 노드 설정에 따라 output 또는 text 필드에 담길 수 있으므로 이를 체크합니다.\nlet quizData = input.text || input.output || input;\n\n// 만약 데이터가 문자열(String) 형태라면 JSON 객체로 변환합니다.\nif (typeof quizData === 'string') {\n    try {\n        quizData = JSON.parse(quizData);\n    } catch (e) {\n        // JSON 형식이 아닐 경우 에러 방지를 위해 빈 객체 할당\n        quizData = { title: \"형식 오류\", quiz: [] };\n    }\n}\n\n// 3. HTML 템플릿 정의\nconst htmlTemplate = `\n<!DOCTYPE html>\n<html lang=\"ko\">\n<head>\n    <meta charset=\"UTF-8\">\n    <style>\n        body { font-family: sans-serif; padding: 40px; max-width: 800px; margin: auto; line-height: 1.6; }\n        h1 { text-align: center; border-bottom: 3px double #000; padding-bottom: 10px; text-decoration: underline; }\n        .quiz-item { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px dashed #ccc; }\n        .question { font-size: 18px; font-weight: bold; margin-bottom: 10px; }\n        .options { list-style: none; padding-left: 20px; }\n        .options li { margin: 8px 0; }\n        .answer-box { background: #f9f9f9; padding: 10px; margin-top: 10px; border-left: 5px solid #333; font-size: 14px; }\n    </style>\n</head>\n<body>\n    <h1>${quizData.title || '금융 퀴즈'}</h1>\n    <div id=\"quiz-list\"></div>\n</body>\n</html>\n`;\n\n// 4. 문제 리스트 생성 루프 (데이터가 있을 때만 실행)\nlet quizHtml = \"\";\nif (quizData.quiz && Array.isArray(quizData.quiz)) {\n    quizData.quiz.forEach((q, index) => {\n        let optionsHtml = \"\";\n        if (q.options && Array.isArray(q.options)) {\n            optionsHtml = '<ul class=\"options\">' + \n                q.options.map(opt => `<li>① ${opt}</li>`).join('') + \n                '</ul>';\n        }\n        \n        quizHtml += `\n            <div class=\"quiz-item\">\n                <div class=\"question\">${index + 1}. ${q.question}</div>\n                ${optionsHtml}\n                <div class=\"answer-box\">\n                    <strong>[정답]:</strong> ${q.answer} <br>\n                    <strong>[해설]:</strong> ${q.explanation}\n                </div>\n            </div>`;\n    });\n} else {\n    quizHtml = \"<p>문제를 생성할 수 없습니다. AI 응답 형식을 확인해주세요.</p>\";\n}\n\n// 5. 최종 HTML 완성 및 반환\nconst finalHtml = htmlTemplate.replace('<div id=\"quiz-list\"></div>', quizHtml);\n\nreturn {\n    html: finalHtml\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        928,
+        0
+      ],
+      "id": "602a6296-d527-4dca-a933-ed5571f6c8a1",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $('Webhook').item.json.body.gasUrl }}",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "html",
+              "value": "={{ $json.html }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1152,
+        0
+      ],
+      "id": "3629a3b3-76b6-416d-aa3e-33e9ba25a695",
+      "name": "HTTP Request1"
+    },
+    {
+      "parameters": {
+        "fromEmail": "ksj386502@gmail.com",
+        "toEmail": "={{ $('Webhook').item.json.body.email }}",
+        "subject": "AI 금융 퀴즈 시험지가 도착했습니다",
+        "html": "={{ $json.data }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1360,
+        0
+      ],
+      "id": "59c04612-bc36-4e87-b3d3-309c9110b55e",
+      "name": "Send email",
+      "webhookId": "8474599c-3935-4073-a38e-411319720158",
+      "credentials": {
+        "smtp": {
+          "id": "jbTbSuEhfTE10LbX",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When chat message received": {
+      "main": [
+        []
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "Send email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "d7b6586a-dacd-48bb-8ae8-337238873386",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "834cd0e38dfaee0eddaa4be7ee456407c587ad22f8d0fb1213aaca26790b4a87"
+  },
+  "id": "yCwlDfeu_CGIba3e_zfHK",
+  "tags": []
+}
