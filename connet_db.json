@@ -1,0 +1,628 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        816,
+        -48
+      ],
+      "id": "62f2e4a6-5e98-47e3-b648-fb04f73fbfb6",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "HuMJ2pCjNcrXPpWv",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.hankyung.com/financial-market/cryptocurrency-fintech",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -704,
+        -208
+      ],
+      "id": "d5995835-db7a-4fd0-b801-fefb2c5e705c",
+      "name": "HTTP Request2"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "article_link",
+              "cssSelector": ".news-tit a",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        -528,
+        -208
+      ],
+      "id": "d1631557-94e5-46e0-ad45-15def49a0b41",
+      "name": "HTML1"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "article_link",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        -208
+      ],
+      "id": "aba84eab-54dd-496a-a921-9782dc3e1c17",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Limit').item.json.article_link }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        192,
+        -208
+      ],
+      "id": "5c3ec88b-0c72-48bf-a698-9f8737d6e057",
+      "name": "HTTP Request3"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "title",
+              "cssSelector": "h1.headline"
+            },
+            {
+              "key": "date",
+              "cssSelector": ".txt-date"
+            },
+            {
+              "key": "contents",
+              "cssSelector": "#articletxt"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        368,
+        -208
+      ],
+      "id": "69211396-2062-4735-bd63-f99449b011ee",
+      "name": "HTML2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('HTML2').item.json.contents }}",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "역할: 너는 금융감독원이나 경제 연구소에서 근무하는 전문 금융 교육 콘텐츠 제작자야. 임무: 제공되는 금융 기사 본문을 분석하여, 독자가 기사의 핵심 금융 개념과 시장 흐름을 정확히 파악했는지 확인하는 문제를 총 4~5개 출제해.  문제 출제 가이드라인:  용어 확인: 기사에 나온 주요 금융 용어의 정의를 정확히 묻는다.  흐름 분석: 기사 내 인과관계(원인과 결과)를 파악하는 문제를 반드시 포함한다.  경제적 추론: 기사 내용을 바탕으로 한 향후 시장 변화나 정책적 시사점을 묻는다.  언어 규칙: 모든 출력 문장(질문, 옵션, 정답, 해설)은 반드시 100% 한국어로만 작성한다. 일본어 조사나 영어 단어가 섞이지 않도록 철저히 검수하라.  데이터 일관성: 객관식 문제의 경우, answer는 반드시 options 중 하나와 완벽하게 일치해야 한다. 객관식 문제를 출제할 때에는 보기(option)에 존재하는 답(answer)이어야 하고,  답(answer)이 하나만 있는 문제만 출제해 답이 2개 이상인 문제는 출제하지마  출력 형식: 반드시 순수한 JSON 데이터만 출력하고 Markdown 형식을 무시해. 또한 객관식 문제의 option은 1,2,3,4번으로 보기를 구성해줘. 그리고 객관식 문제의 답은 보기의 내용이 아닌 보기의 번호( 예를 들면 1번)로 작성해줘. 그리고 객관식 뿐 만 아니라 주관식 문제도 만들어줘  출력 형태 예시 {   \"title\": 문서 제목   \"summary\": 문서 요약 내용   \"quiz\": [     {       \"type\": 객관식       \"question\": 문제 내용       \"options\": 객관식 번호       \"answer\": 답       \"explanation\": 문제 설명     },     {       \"type\": \"단답형\",       \"question\": 문제       \"answer\": 문제의 답     }   ] }"
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        752,
+        -208
+      ],
+      "id": "153705eb-bc0c-42cd-98ff-0ac1d79dcc33",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "maxItems": 5
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        -208
+      ],
+      "id": "ebc8fd86-1ac8-4584-a2b9-159a5eb94f49",
+      "name": "Limit"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from quizzes;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -256,
+        -432
+      ],
+      "id": "3bc312e3-3694-4e5a-ab78-77329d1390c3",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "articles",
+          "mode": "list",
+          "cachedResultName": "articles"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $('Split Out').item.json.article_link }}",
+            "title": "={{ $json.title }}",
+            "raw_text": "={{ $json.contents }}"
+          },
+          "matchingColumns": [
+            "url"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "raw_text",
+              "displayName": "raw_text",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "fetched_at",
+              "displayName": "fetched_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "outputColumns": [
+            "id"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        560,
+        -208
+      ],
+      "id": "6e141eb4-0965-4be1-ab15-ad2374cbec99",
+      "name": "Save_Article",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "quizzes",
+          "mode": "list",
+          "cachedResultName": "quizzes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "quiz_data": "={{ $json.text }}",
+            "execution_id": "={{ $('Start_Log').item.json.id }}",
+            "article_id": "={{ $('Save_Article').item.json.id }}",
+            "difficulty": "MEDIUM"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "article_id",
+              "displayName": "article_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "quiz_data",
+              "displayName": "quiz_data",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "difficulty",
+              "displayName": "difficulty",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": true,
+              "options": [
+                {
+                  "name": "EASY",
+                  "value": "EASY"
+                },
+                {
+                  "name": "MEDIUM",
+                  "value": "MEDIUM"
+                },
+                {
+                  "name": "HARD",
+                  "value": "HARD"
+                }
+              ]
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1056,
+        -208
+      ],
+      "id": "b12c5627-7a6a-404b-a577-705f977de1a1",
+      "name": "Save_Quiz",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "execution_logs",
+          "mode": "list",
+          "cachedResultName": "execution_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "RUNNING",
+            "created_at": "={{$now}}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": true,
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "RUNNING",
+                  "value": "RUNNING"
+                }
+              ]
+            },
+            {
+              "id": "pdf_url",
+              "displayName": "pdf_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_log",
+              "displayName": "error_log",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        -208
+      ],
+      "id": "d3d92424-801a-422c-9619-3c1628f4ee66",
+      "name": "Start_Log",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "HTML1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML1": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Limit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "HTML2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML2": {
+      "main": [
+        [
+          {
+            "node": "Save_Article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit": {
+      "main": [
+        [
+          {
+            "node": "Start_Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Save_Quiz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save_Article": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start_Log": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "e2652fb0-d767-4214-b616-b73c54c25a10",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "834cd0e38dfaee0eddaa4be7ee456407c587ad22f8d0fb1213aaca26790b4a87"
+  },
+  "id": "yCwlDfeu_CGIba3e_zfHK",
+  "tags": []
+}
