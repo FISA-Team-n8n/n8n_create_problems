@@ -1,0 +1,306 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-quiz",
+        "options": {
+          "allowedOrigins": "http://localhost:8000"
+        }
+      },
+      "name": "Webhook (User Trigger)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        -160
+      ],
+      "webhookId": "generate-quiz-webhook",
+      "id": "4262052e-f504-4758-9b08-fe929cd2588b",
+      "notes": "유저 요청 트리거"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.mode }}",
+              "value2": "url"
+            }
+          ]
+        }
+      },
+      "name": "Switch (URL vs Random)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -160
+      ],
+      "id": "6f3edb6d-cfbe-4b99-8f5d-a2919cf38ba4"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.target_url}}",
+        "options": {}
+      },
+      "name": "Get Webpage HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        416,
+        -272
+      ],
+      "id": "85284c20-a21e-4424-ba0c-6f0334fd5a1e"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/AKfycbxaft2oJ7f-rMV2rdg0Y27oQnlNSfDoRRSz_7H99nCibd7qmpbtwks67iKP2cAYbUQ0/exec",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "quiz_data",
+              "value": "={{ $json.output[0].content[0].text }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Webhook (User Trigger)').item.json.body.email }}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "timeout": 60000
+        }
+      },
+      "name": "Send to GAS (Fire & Forget)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1104,
+        -272
+      ],
+      "id": "0a940d46-42c6-4740-a549-da0ac88551b2",
+      "notes": "GAS로 JSON 전송 (응답 대기 X)"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-NANO"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=너는 '금융 경제 교육 전문가'야. \n입력된 기사를 바탕으로 학습 자료를 만들어줘.\n\n[요청 사항]\n1. 3줄 요약: 기사 핵심 내용을 요약해줘.\n2. 객관식 퀴즈 (3문제): 4지 선다형으로 만들고, 정답과 해설을 포함해줘.\n3. 주관식/서술형 퀴즈 (2문제): 사고력을 키우는 질문을 만들고, 모범 답안을 포함해줘.\n\n[출력 형식 (Markdown)]\n---\n# 📰 뉴스 3줄 요약\n- (요약1)\n- (요약2)\n- (요약3)\n\n# 📝 객관식 퀴즈\nQ1. (문제)\n1) 보기 2) 보기 3) 보기 4) 보기\n> 정답: O\n> 해설: ...\n\nQ2. ...\n\n# 💡 주관식 사고력 퀴즈\nQ1. (문제: 기사의 내용을 바탕으로 ~에 대해 서술하시오.)\n> 모범 답안: ...\n\nQ2. ...\n---\n\n[기사 내용]:\n{{ $json.data }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        -272
+      ],
+      "id": "cafc3beb-b0dc-4f46-8a53-c0d19967b318",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": "LtiXRW3tqr75jvRX",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "html": "={{ $json.data }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        624,
+        -272
+      ],
+      "id": "03b9083a-0a35-4831-a847-40a9b7702874",
+      "name": "Markdown"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  a.title,\n  a.summary,\n  q.quiz_data\nFROM quizzes q\nJOIN articles a ON q.article_id = a.id\nORDER BY RANDOM()\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        416,
+        -16
+      ],
+      "id": "dce4d54e-63e0-4f0c-bbdb-c30bb7128d73",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "9FT02tLUhfqN1DB2",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. DB 데이터 가져오기\nconst item = items[0].json;\nconst title = item.title;\nconst summary = item.summary;\nconst quizList = item.quiz_data; // JSON 데이터\n\n// 2. 학습지 포맷으로 조립 (Markdown)\nlet markdownText = \"\";\n\n// [헤더 & 요약]\nmarkdownText += `# 📰 [Review] ${title}\\n\\n`;\nmarkdownText += `# 💡 핵심 요약 복습\\n${summary}\\n\\n`;\n\n// [퀴즈]\nmarkdownText += `# 📝 실전 퀴즈 풀이\\n`;\n\nif (Array.isArray(quizList)) {\n  quizList.forEach((q, index) => {\n    markdownText += `Q${index + 1}. ${q.question || \"문제\"}\\n`;\n    \n    // 보기 (객관식인 경우)\n    if (Array.isArray(q.options)) {\n      q.options.forEach((opt, i) => {\n        markdownText += `${i + 1}) ${opt}  `;\n      });\n      markdownText += \"\\n\";\n    }\n\n    markdownText += `> 정답: ${q.answer}\\n`;\n    markdownText += `> 해설: ${q.explanation}\\n\\n`;\n  });\n}\n\n// 3. 결과 내보내기 ('quiz_data'라는 이름으로 포장)\nreturn [{\n  json: {\n    quiz_data: markdownText\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        -16
+      ],
+      "id": "3e3a089e-3e32-48cc-a8a8-b606f2deaf52",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/AKfycbxaft2oJ7f-rMV2rdg0Y27oQnlNSfDoRRSz_7H99nCibd7qmpbtwks67iKP2cAYbUQ0/exec",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "quiz_data",
+              "value": "={{ $json.quiz_data }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Webhook (User Trigger)').item.json.body.email }}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "timeout": 60000
+        }
+      },
+      "name": "Send to GAS (Fire & Forget)1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        864,
+        -16
+      ],
+      "id": "a08ab142-0236-4de7-b8df-24fae26d7d80",
+      "notes": "GAS로 JSON 전송 (응답 대기 X)"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook (User Trigger)": {
+      "main": [
+        [
+          {
+            "node": "Switch (URL vs Random)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch (URL vs Random)": {
+      "main": [
+        [
+          {
+            "node": "Get Webpage HTML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Webpage HTML": {
+      "main": [
+        [
+          {
+            "node": "Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Send to GAS (Fire & Forget)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Markdown": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Send to GAS (Fire & Forget)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "964077f3-5d94-4bfb-9ecb-56644aefd9fe",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5cecc20ce5c758c19b0b0f69216f83f9e40c165cf168b801857406b67eef8953"
+  },
+  "id": "AA2BbBB-P6P2ZI1pv9tSv",
+  "tags": []
+}
