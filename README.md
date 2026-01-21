@@ -8,7 +8,7 @@
 
 <br/>
 
-## 기술 선택 이유
+## ⚙️ 기술 선택 이유
 
 금융 기사 데이터, AI 요약 결과, 문제 생성 결과를 구조적으로 저장하고 관리할 수 있는 데이터베이스가 필요
 
@@ -16,7 +16,7 @@
 
 <br/>
 
-### PostgreSQL 선택 이유
+### 🐘 PostgreSQL 선택 이유
 
 관계형 데이터베이스로서 기사 → 실행 로그 → 퀴즈 간의 명확한 관계(FK)를 설계하기에 적합
 
@@ -35,7 +35,7 @@ JSONB 타입을 통해 AI가 생성한 문제 데이터를 유연하게 저장 �
 
 <br/>
 
-### Supabase 선택 이유
+### ⚡ Supabase 선택 이유
 
 PostgreSQL을 기반으로 한 관리형 DB 서비스로 빠른 프로젝트 세팅 가능
 
@@ -45,7 +45,7 @@ n8n과의 연동 시 Postgres Pooler 연결을 지원하여 안정적인 자동�
 
 <br/>
 
-### 데이터 베이스 구조 요약
+### 📑 데이터 베이스 구조 요약
 
 - execution_logs
     - 자동화 파이프라인의 실행 상태(SUCCESS / FAILED / RUNNING) 기록
@@ -58,7 +58,7 @@ n8n과의 연동 시 Postgres Pooler 연결을 지원하여 안정적인 자동�
 
 <br/>
 
-## n8n 연동 방식
+## 🔗 n8n 연동 방식
 
 - Docker 기반 n8n 환경에서 Postgres Node를 사용하여 Supabase DB에 직접 접근
 - SELECT / INSERT/ JOIN 쿼리 활용해
