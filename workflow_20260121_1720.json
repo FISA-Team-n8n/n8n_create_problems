@@ -1,0 +1,1028 @@
+{
+  "name": "My workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "generate-quiz",
+        "options": {
+          "allowedOrigins": "http://localhost:8000"
+        }
+      },
+      "name": "Webhook (User Trigger)",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -1920
+      ],
+      "webhookId": "generate-quiz-webhook",
+      "id": "0ce8e928-c5ff-4024-8b66-45de75a5c5b9",
+      "notes": "유저 요청 트리거"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.mode }}",
+              "value2": "url"
+            }
+          ]
+        }
+      },
+      "name": "Switch (URL vs Random)",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        912,
+        -1920
+      ],
+      "id": "8251598c-34d9-4f0b-88d0-d2af0381452b"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.body.target_url}}",
+        "options": {}
+      },
+      "name": "Get Webpage HTML",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1168,
+        -2032
+      ],
+      "id": "13b44ec9-b373-439d-b6ad-feacfc7e3772"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/AKfycbxaft2oJ7f-rMV2rdg0Y27oQnlNSfDoRRSz_7H99nCibd7qmpbtwks67iKP2cAYbUQ0/exec",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "quiz_data",
+              "value": "={{ $json.output[0].content[0].text }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Webhook (User Trigger)').item.json.body.email }}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "timeout": 60000
+        }
+      },
+      "name": "Send to GAS (Fire & Forget)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1856,
+        -2032
+      ],
+      "id": "d1907b9d-461c-438d-9929-f72be4133e4b",
+      "notes": "GAS로 JSON 전송 (응답 대기 X)"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-NANO"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=너는 '금융 경제 교육 전문가'야. \n입력된 기사를 바탕으로 학습 자료를 만들어줘.\n\n[요청 사항]\n1. 3줄 요약: 기사 핵심 내용을 요약해줘.\n2. 객관식 퀴즈 (3문제): 4지 선다형으로 만들고, 정답과 해설을 포함해줘.\n3. 주관식/서술형 퀴즈 (2문제): 사고력을 키우는 질문을 만들고, 모범 답안을 포함해줘.\n\n[출력 형식 (Markdown)]\n---\n# 📰 뉴스 3줄 요약\n- (요약1)\n- (요약2)\n- (요약3)\n\n# 📝 객관식 퀴즈\nQ1. (문제)\n1) 보기 2) 보기 3) 보기 4) 보기\n> 정답: O\n> 해설: ...\n\nQ2. ...\n\n# 💡 주관식 사고력 퀴즈\nQ1. (문제: 기사의 내용을 바탕으로 ~에 대해 서술하시오.)\n> 모범 답안: ...\n\nQ2. ...\n---\n\n[기사 내용]:\n{{ $json.data }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        1552,
+        -2032
+      ],
+      "id": "1a024887-b13a-4a26-8992-1ccbc4686e26",
+      "name": "Message a model"
+    },
+    {
+      "parameters": {
+        "html": "={{ $json.data }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        1376,
+        -2032
+      ],
+      "id": "03108bf5-119b-4898-b30b-00a555380806",
+      "name": "Markdown"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. DB 데이터 가져오기\nconst item = items[0].json;\n\n// [안전 장치 1] 제목과 요약이 없을 때 대체 문구 넣기\nconst title = item.title || \"제목 없음\";\nconst summary = item.summary || \"요약 내용이 제공되지 않았습니다.\"; \n\n// [안전 장치 2] 퀴즈 데이터 구조가 달라도 알아서 찾아내기\nlet quizList = [];\nif (item.quiz_data) {\n  if (Array.isArray(item.quiz_data)) {\n    // 1. 그냥 배열인 경우\n    quizList = item.quiz_data;\n  } else if (item.quiz_data.quiz && Array.isArray(item.quiz_data.quiz)) {\n    // 2. {\"quiz\": [...]} 형태로 감싸진 경우\n    quizList = item.quiz_data.quiz;\n  }\n}\n\n// 2. 마크다운 텍스트 조립 시작\nlet markdownText = \"\";\n\n// [헤더]\nmarkdownText += `# 📰 [Review] ${title}\\n\\n`;\n\n// [요약]\nmarkdownText += `# 💡 핵심 요약 복습\\n`;\nmarkdownText += `${summary}\\n\\n`;\n\n// [퀴즈]\nmarkdownText += `# 📝 실전 퀴즈 풀이\\n`;\n\nif (quizList.length > 0) {\n  quizList.forEach((q, index) => {\n    // 문제 유형 표시 (있으면)\n    const typeHeader = q.type ? `[${q.type}] ` : \"\";\n    markdownText += `Q${index + 1}. ${typeHeader}${q.question || \"문제 내용 없음\"}\\n`;\n    \n    // 보기 출력 (options가 있고 배열인 경우만)\n    if (Array.isArray(q.options) && q.options.length > 0) {\n      q.options.forEach((opt, i) => {\n        // 보기 앞의 번호 제거 (예: \"1. 30%\" -> \"30%\")\n        const cleanOpt = opt.toString().replace(/^[0-9]+[\\.\\)]\\s*/, '');\n        markdownText += `${i + 1}) ${cleanOpt}  `;\n      });\n      markdownText += \"\\n\"; \n    }\n\n    // 정답 및 해설\n    markdownText += `> 정답: ${q.answer}\\n`;\n    markdownText += `> 해설: ${q.explanation}\\n\\n`;\n  });\n} else {\n    markdownText += \"퀴즈 데이터를 불러오지 못했습니다.\\n\";\n}\n\n// 3. 결과 내보내기\nreturn [{\n  json: {\n    quiz_data: markdownText\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1376,
+        -1776
+      ],
+      "id": "60a987a7-298f-47ee-8426-b83c8d332d6c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://script.google.com/macros/s/AKfycbxaft2oJ7f-rMV2rdg0Y27oQnlNSfDoRRSz_7H99nCibd7qmpbtwks67iKP2cAYbUQ0/exec",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "quiz_data",
+              "value": "={{ $json.quiz_data }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $('Webhook (User Trigger)').item.json.body.email }}"
+            }
+          ]
+        },
+        "options": {
+          "redirect": {
+            "redirect": {}
+          },
+          "timeout": 60000
+        }
+      },
+      "name": "Send to GAS (Fire & Forget)1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1856,
+        -1776
+      ],
+      "id": "e26a92f3-fd41-46de-9feb-bef1e4a4f567",
+      "notes": "GAS로 JSON 전송 (응답 대기 X)"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-nano",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-NANO"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "역할: 너는 금융감독원이나 경제 연구소에서 근무하는 전문 금융 교육 콘텐츠 제작자야. 임무: 제공되는 금융 기사 본문을 분석하여, 독자가 기사의 핵심 금융 개념과 시장 흐름을 정확히 파악했는지 확인하는 문제를 총 4~5개 출제해.  문제 출제 가이드라인:  용어 확인: 기사에 나온 주요 금융 용어의 정의를 정확히 묻는다.  흐름 분석: 기사 내 인과관계(원인과 결과)를 파악하는 문제를 반드시 포함한다.  경제적 추론: 기사 내용을 바탕으로 한 향후 시장 변화나 정책적 시사점을 묻는다.  언어 규칙: 모든 출력 문장(질문, 옵션, 정답, 해설)은 반드시 100% 한국어로만 작성한다. 일본어 조사나 영어 단어가 섞이지 않도록 철저히 검수하라.  데이터 일관성: 객관식 문제의 경우, answer는 반드시 options 중 하나와 완벽하게 일치해야 한다. 객관식 문제를 출제할 때에는 보기(option)에 존재하는 답(answer)이어야 하고,  답(answer)이 하나만 있는 문제만 출제해 답이 2개 이상인 문제는 출제하지마  출력 형식: 반드시 순수한 JSON 데이터만 출력하고 Markdown 형식을 무시해. 또한 객관식 문제의 option은 1,2,3,4번으로 보기를 구성해줘. 그리고 객관식 문제의 답은 보기의 내용이 아닌 보기의 번호( 예를 들면 1번)로 작성해줘. 그리고 객관식 뿐 만 아니라 주관식 문제도 만들어줘  출력 형태 예시 {   \"title\": 문서 제목   \"summary\": 문서 요약 내용   \"quiz\": [     {       \"type\": 객관식       \"question\": 문제 내용       \"options\": 객관식 번호       \"answer\": 답       \"explanation\": 문제 설명     },     {       \"type\": \"단답형\",       \"question\": 문제       \"answer\": 문제의 답     }   ] }"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        2096,
+        -2416
+      ],
+      "id": "21bb2c7c-67e8-4a62-8f89-de395ce801ec",
+      "name": "Message a model1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  a.id as a_id,\n  q.id as q_id,\n  a.title,\n  a.summary,\n  q.quiz_data\nFROM quizzes q\nJOIN articles a ON q.article_id = a.id\nORDER BY RANDOM()\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1168,
+        -1776
+      ],
+      "id": "38889f47-c9ae-4250-93c4-54e56d7a58ff",
+      "name": "Execute a SQL query1",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "article_link",
+              "cssSelector": ".news-tit a",
+              "returnValue": "attribute",
+              "attribute": "href",
+              "returnArray": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        832,
+        -2416
+      ],
+      "id": "7c1f14c6-eac8-451f-8a09-66c65352cf7a",
+      "name": "HTML"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "article_link",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1024,
+        -2416
+      ],
+      "id": "6dd991b1-59ab-4ce2-96bf-5cb9cf2c3dd3",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Limit1').item.json.article_link }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1552,
+        -2416
+      ],
+      "id": "72eaef97-d0a6-4a4b-b8c7-c27c627bb9ef",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "title",
+              "cssSelector": "h1.headline"
+            },
+            {
+              "key": "date",
+              "cssSelector": ".txt-date"
+            },
+            {
+              "key": "contents",
+              "cssSelector": "#articletxt"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1728,
+        -2416
+      ],
+      "id": "ad7a190b-e332-44af-be7a-06e363865a92",
+      "name": "HTML3"
+    },
+    {
+      "parameters": {
+        "maxItems": 5
+      },
+      "type": "n8n-nodes-base.limit",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        -2416
+      ],
+      "id": "5b28f817-4b27-4cd3-8378-5b0bbd63bc8d",
+      "name": "Limit1"
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "articles",
+          "mode": "list",
+          "cachedResultName": "articles"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "url": "={{ $('Split Out1').item.json.article_link }}",
+            "title": "={{ $json.title }}",
+            "raw_text": "={{ $json.contents }}"
+          },
+          "matchingColumns": [
+            "url"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "raw_text",
+              "displayName": "raw_text",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "fetched_at",
+              "displayName": "fetched_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {
+          "outputColumns": [
+            "id"
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1920,
+        -2416
+      ],
+      "id": "ca5a5795-07c6-4022-8e77-8d775fa980cc",
+      "name": "Save_Article1",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "quizzes",
+          "mode": "list",
+          "cachedResultName": "quizzes"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "quiz_data": "={{ $json.output[0].content[0].text }}",
+            "execution_id": "={{ $('Start_Log1').item.json.id }}",
+            "article_id": "={{ $('Save_Article1').item.json.id }}",
+            "difficulty": "MEDIUM"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "execution_id",
+              "displayName": "execution_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "article_id",
+              "displayName": "article_id",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "quiz_data",
+              "displayName": "quiz_data",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "object",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "difficulty",
+              "displayName": "difficulty",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": true,
+              "options": [
+                {
+                  "name": "EASY",
+                  "value": "EASY"
+                },
+                {
+                  "name": "MEDIUM",
+                  "value": "MEDIUM"
+                },
+                {
+                  "name": "HARD",
+                  "value": "HARD"
+                }
+              ]
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2416,
+        -2416
+      ],
+      "id": "577405fa-e1d1-4185-9ea0-3dc76472f88a",
+      "name": "Save_Quiz1",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schema": {
+          "__rl": true,
+          "mode": "list",
+          "value": "public"
+        },
+        "table": {
+          "__rl": true,
+          "value": "execution_logs",
+          "mode": "list",
+          "cachedResultName": "execution_logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "RUNNING",
+            "created_at": "={{$now}}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": true,
+              "defaultMatch": false,
+              "display": true,
+              "type": "options",
+              "canBeUsedToMatch": true,
+              "options": [
+                {
+                  "name": "SUCCESS",
+                  "value": "SUCCESS"
+                },
+                {
+                  "name": "FAILED",
+                  "value": "FAILED"
+                },
+                {
+                  "name": "RUNNING",
+                  "value": "RUNNING"
+                }
+              ]
+            },
+            {
+              "id": "pdf_url",
+              "displayName": "pdf_url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "error_log",
+              "displayName": "error_log",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "created_at",
+              "displayName": "created_at",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "dateTime",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1360,
+        -2416
+      ],
+      "id": "54d14bff-3388-4f45-a968-dbf240f556d5",
+      "name": "Start_Log1",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://www.hankyung.com/financial-market/cryptocurrency-fintech",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        656,
+        -2416
+      ],
+      "id": "5f778cd3-a1a7-4489-bbb1-6a0c08c9e4d7",
+      "name": "HTTP Request4"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "select * from quizzes;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2784,
+        -448
+      ],
+      "id": "8bb77d2e-2ba7-4fd2-8b62-0ab8176cb139",
+      "name": "Execute a SQL query2",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- 1. 먼저 퀴즈를 삭제 (기사를 참조하고 있으므로)\nDELETE FROM quizzes WHERE article_id = '{{ $('Execute a SQL query1').item.json.q_id }}';\n-- 2. 그 다음 기사를 삭제\nDELETE FROM articles WHERE id = '{{ $('Execute a SQL query1').item.json.a_id }}';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1600,
+        -1776
+      ],
+      "id": "d529e937-79da-4909-9daa-7ee93a7b90ce",
+      "name": "Execute a SQL query3",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT count(*) as total FROM quizzes;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2624,
+        -2416
+      ],
+      "id": "50f20eea-b6b5-4973-968b-bd0eceda5805",
+      "name": "Execute a SQL query4",
+      "credentials": {
+        "postgres": {
+          "id": "N80VCq4QVguFFgNg",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2c34617d-b635-445f-b020-e7d716a3d751",
+              "leftValue": "={{ $json.total.toNumber() % 5 }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2816,
+        -2416
+      ],
+      "id": "fbb26136-d871-487e-8bca-a1dc391c7a88",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "현재 DB에 문제가 충분히 쌓였습니다! 풀어주세요!",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        2976,
+        -2304
+      ],
+      "id": "8e03fcc5-ced4-419b-b126-e774284a754e",
+      "name": "Discord",
+      "webhookId": "3f997798-b175-456f-9cb2-439b66ef4ada",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "sWokKhKc9sJ4NMI2",
+          "name": "Discord Webhook account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook (User Trigger)": {
+      "main": [
+        [
+          {
+            "node": "Switch (URL vs Random)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch (URL vs Random)": {
+      "main": [
+        [
+          {
+            "node": "Get Webpage HTML",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Execute a SQL query1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Webpage HTML": {
+      "main": [
+        [
+          {
+            "node": "Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Send to GAS (Fire & Forget)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Markdown": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "Save_Quiz1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Limit1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTML3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML3": {
+      "main": [
+        [
+          {
+            "node": "Save_Article1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limit1": {
+      "main": [
+        [
+          {
+            "node": "Start_Log1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save_Article1": {
+      "main": [
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start_Log1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request4": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query2": {
+      "main": [
+        []
+      ]
+    },
+    "Save_Quiz1": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query4": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query3": {
+      "main": [
+        [
+          {
+            "node": "Send to GAS (Fire & Forget)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "7cd936bf-97d8-4500-822a-a5b8555fe32c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "834cd0e38dfaee0eddaa4be7ee456407c587ad22f8d0fb1213aaca26790b4a87"
+  },
+  "id": "yCwlDfeu_CGIba3e_zfHK",
+  "tags": []
+}
