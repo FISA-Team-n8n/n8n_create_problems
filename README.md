@@ -129,7 +129,7 @@ n8n을 사용한 경제/금융 뉴스로부터 문제 만들기 자동화 프로
 <img width="2554" height="330" alt="image" src="https://github.com/user-attachments/assets/d02bf191-4f78-438c-9cee-7737cfb1cd2f" />
 
 1. DB(`quizzes` + `articles` 조인)에서 `ORDER BY RANDOM() LIMIT 1` 쿼리로 과거 문제 1세트 추출
-2. 저장된 JSON 데이터를 다시 Markdown 텍스트로 역직렬화
+2. 저장된 JSONB 데이터를 다시 Markdown 텍스트로 역직렬화
 3. GAS로 전송하여 PDF 발송
 4. 발송 완료된 문제는 데이터베이스에서 자동 삭제하여 중복 학습 방지
 
@@ -139,7 +139,7 @@ n8n을 사용한 경제/금융 뉴스로부터 문제 만들기 자동화 프로
 <img width="2070" height="384" alt="image" src="https://github.com/user-attachments/assets/84712cf0-f5fc-4a55-8a15-0bbe1b485d80" />
 
 1. 하루 단위로 한국 경제 사이트의 금융 카테고리 기사를 크롤링 및 개별 뉴스 URL 추출
-2. 기사 본문을 JSON 형태로 데이터베이스에 적재
+2. 기사 본문을 JSONB 형태로 데이터베이스에 적재
 3. 각 기사의 본문을 파싱
 4. OpenAI가 Markdown 형식으로 요약 및 퀴즈(객관식/주관식) 생성
 5. 퀴즈 데이터를 데이터베이스에 적재
