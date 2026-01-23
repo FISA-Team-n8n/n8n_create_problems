@@ -81,8 +81,8 @@ n8n을 사용한 경제/금융 뉴스로부터 문제 만들기 자동화 프로
 | --- | --- | --- |
 | **구분** | RDBMS | ORDBMS |
 | **데이터 타입 확장성** | JSON 지원은 있으나 기능 제한적 | JSONB, ENUM, ARRAY 등 고급 타입 지원 |
-| **JSON 데이터 처리** | JSON 내부 필드 직접 쿼리,인덱싱 가능 | 상대적으로 제약 조건 활용 제한 |
-| **Supabase 호환성** | Supabase 기본 DB | Supabase 미지원 |
+| **JSON 데이터 처리** | 상대적으로 제약 조건 활용 제한 | JSON 내부 필드 직접 쿼리,인덱싱 가능  |
+| **Supabase 호환성** | Supabase 미지원 | Supabase 기본 DB |
 
 <br/>
 
