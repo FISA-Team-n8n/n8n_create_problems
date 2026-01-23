@@ -109,13 +109,14 @@ n8n을 사용한 경제/금융 뉴스로부터 문제 만들기 자동화 프로
 ### 1️⃣ n8n
 
 > 전체 워크플로우
+<img width="1194" height="555" alt="스크린샷 2026-01-23 오전 9 48 36" src="https://github.com/user-attachments/assets/0254a7d0-69aa-4a4a-98bb-4bf30a99b25e" />
 
-<img width="2138" height="1006" alt="image" src="https://github.com/user-attachments/assets/e66b7a2b-8a05-4be4-9b82-5115b2039363" />
+
 
 <br/>
 
 ### A. 실시간 생성 모드 (URL Trigger)
-<img width="2186" height="388" alt="image" src="https://github.com/user-attachments/assets/7deb61b5-9e05-4bb1-9eda-452951e88ec9" />
+<img width="1009" height="166" alt="스크린샷 2026-01-23 오전 9 49 43" src="https://github.com/user-attachments/assets/b18b5ae4-1a37-4c12-99cf-7b92dc2a1339" />
 
 1. 사용자가 대시보드에서 뉴스 URL & 굿노트로 발송받을 이메일 주소를 입력
 2. n8n이 기사 본문을 크롤링
